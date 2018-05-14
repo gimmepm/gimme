@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/gimme/gimme/cmd"
+import "github.com/gimmepm/gimme/cmd"
 
 func main() {
 	cmd.Execute()
