@@ -2,7 +2,7 @@ default:
 	@mkdir -p bin
 	@go build -o bin/gimme
 
-test:
+test: default
 	@for TEST_SCRIPT in integration/test*.sh; do \
 		$$TEST_SCRIPT; \
 	done
