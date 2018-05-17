@@ -9,6 +9,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// ListStarredRepos will fetch and return all of the starred repos by a user
 func ListStarredRepos(token string) ([]string, error) {
 	starredRepos := []string{}
 	operationErrors := []error{}
