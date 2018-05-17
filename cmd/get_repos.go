@@ -16,7 +16,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/gimmepm/gimme/pkg/gh"
 	"github.com/spf13/cobra"
 )
 
@@ -31,20 +33,33 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("repos called")
+		token, err := cmd.Flags().GetString("token")
+		if err != nil {
+			fmt.Printf("getReposCmd.Run: Error parsing token: %v\n", err)
+			os.Exit(1)
+		}
+
+		if token == "" {
+			if tmpToken := os.Getenv("GIMME_GITHUB_TOKEN"); tmpToken != "" {
+				token = tmpToken
+			} else {
+				fmt.Println("No GitHub token passed as --token or env var GIMME_GITHUB_TOKEN")
+				os.Exit(1)
+			}
+		}
+
+		starredRepos, err := gh.ListStarredRepos(token)
+		if err != nil {
+			fmt.Printf("getReposCmd.Run: Error listing repos: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, repo := range starredRepos {
+			fmt.Println(repo)
+		}
 	},
 }
 
 func init() {
 	getCmd.AddCommand(getReposCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// getReposCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// getReposCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
