@@ -13,6 +13,8 @@ import (
 func ListStarredRepos(token string) ([]string, error) {
 	starredRepos := []string{}
 	operationErrors := []error{}
+	reposPerPage := 50
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -27,7 +29,7 @@ func ListStarredRepos(token string) ([]string, error) {
 		&github.ActivityListStarredOptions{
 			ListOptions: github.ListOptions{
 				Page:    firstPage,
-				PerPage: 50,
+				PerPage: reposPerPage,
 			},
 		},
 	)
@@ -52,6 +54,7 @@ func ListStarredRepos(token string) ([]string, error) {
 			&wg,
 			ghClient,
 			i,
+			reposPerPage,
 			allRepos,
 		)
 	}
@@ -85,7 +88,7 @@ func ListStarredRepos(token string) ([]string, error) {
 	return starredRepos, nil
 }
 
-func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber int, reposByPage chan<- []string) {
+func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber, reposPerPage int, reposByPage chan<- []string) {
 	defer wg.Done()
 
 	starredReposCurrentPage := []string{}
@@ -96,7 +99,7 @@ func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber
 		&github.ActivityListStarredOptions{
 			ListOptions: github.ListOptions{
 				Page:    pageNumber,
-				PerPage: 50,
+				PerPage: reposPerPage,
 			},
 		},
 	)
