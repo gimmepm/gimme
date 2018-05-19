@@ -55,7 +55,11 @@ to quickly create a Cobra application.`,
 		}
 
 		for _, repo := range starredRepos {
-			fmt.Println(repo)
+			fmt.Printf(
+				"%s/%s\n",
+				repo.GetRepository().GetOwner().GetLogin(),
+				repo.GetRepository().GetName(),
+			)
 		}
 	},
 }

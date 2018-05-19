@@ -10,8 +10,8 @@ import (
 )
 
 // ListStarredRepos will fetch and return all of the starred repos by a user
-func ListStarredRepos(token string) ([]string, error) {
-	starredRepos := []string{}
+func ListStarredRepos(token string) ([]*github.StarredRepository, error) {
+	starredRepos := []*github.StarredRepository{}
 	operationErrors := []error{}
 	reposPerPage := 50
 
@@ -38,7 +38,7 @@ func ListStarredRepos(token string) ([]string, error) {
 	}
 
 	for _, repo := range repos {
-		starredRepos = append(starredRepos, repo.GetRepository().GetFullName())
+		starredRepos = append(starredRepos, repo)
 	}
 
 	if firstPage == res.LastPage {
@@ -46,7 +46,7 @@ func ListStarredRepos(token string) ([]string, error) {
 	}
 
 	wg := sync.WaitGroup{}
-	allRepos := make(chan []string)
+	allRepos := make(chan []*github.StarredRepository)
 	errs := make(chan error)
 	for i := firstPage + 1; i <= res.LastPage; i++ {
 		wg.Add(1)
@@ -88,10 +88,10 @@ func ListStarredRepos(token string) ([]string, error) {
 	return starredRepos, nil
 }
 
-func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber, reposPerPage int, reposByPage chan<- []string) {
+func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber, reposPerPage int, reposByPage chan<- []*github.StarredRepository) {
 	defer wg.Done()
 
-	starredReposCurrentPage := []string{}
+	starredReposCurrentPage := []*github.StarredRepository{}
 
 	repos, _, err := client.Activity.ListStarred(
 		context.Background(),
@@ -108,8 +108,32 @@ func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber
 	}
 
 	for _, repo := range repos {
-		starredReposCurrentPage = append(starredReposCurrentPage, repo.GetRepository().GetFullName())
+		starredReposCurrentPage = append(starredReposCurrentPage, repo)
 	}
 
 	reposByPage <- starredReposCurrentPage
+}
+
+/*
+func ListReposLatestReleases(token string) ([]string, error) {
+}
+*/
+
+func getLatestReleaseForRepo(client *github.Client, repo *github.Repository) (*github.RepositoryRelease, error) {
+	releases, _, err := client.Repositories.ListReleases(
+		context.Background(),
+		repo.GetOwner().GetLogin(),
+		repo.GetName(),
+		&github.ListOptions{},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(releases) == 0 {
+		return nil, nil
+	}
+
+	// the releases is ordered, so the first is going to be the latest
+	return releases[0], nil
 }
