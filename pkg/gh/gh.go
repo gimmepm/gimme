@@ -205,5 +205,5 @@ func getLatestReleaseForRepo(wg *sync.WaitGroup, client *github.Client, repo *gi
 		}
 	}
 
-	errs <- fmt.Errorf("Too many failed attempts for %s\n", repo.GetFullName())
+	errs <- fmt.Errorf("too many failed attempts for %s\n", repo.GetFullName())
 }
