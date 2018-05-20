@@ -45,7 +45,9 @@ to quickly create a Cobra application.`,
 			os.Exit(1)
 		}
 		for repo, release := range latestReleasesByRepo {
-			fmt.Printf("(%s) %s -- (%s) %s\n", release.GetPublishedAt().String(), repo.GetFullName(), release.GetTagName(), release.GetName())
+			if release != nil {
+				fmt.Printf("(%s) %s -- (%s) %s\n", release.GetPublishedAt().String(), repo.GetFullName(), release.GetTagName(), release.GetName())
+			}
 		}
 	},
 }
