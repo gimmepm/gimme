@@ -33,19 +33,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		token, err := cmd.Flags().GetString("token")
+		token, err := GetToken(cmd)
 		if err != nil {
-			fmt.Printf("getReposCmd.Run: Error parsing token: %v\n", err)
+			fmt.Printf("%v\n", err)
 			os.Exit(1)
-		}
-
-		if token == "" {
-			if tmpToken := os.Getenv("GIMME_GITHUB_TOKEN"); tmpToken != "" {
-				token = tmpToken
-			} else {
-				fmt.Println("No GitHub token passed as --token or env var GIMME_GITHUB_TOKEN")
-				os.Exit(1)
-			}
 		}
 
 		starredRepos, err := gh.ListStarredRepos(token)
