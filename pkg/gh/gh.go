@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -56,6 +57,7 @@ func ListStarredRepos(token string) ([]*github.StarredRepository, error) {
 			i,
 			reposPerPage,
 			allRepos,
+			errs,
 		)
 	}
 
@@ -88,7 +90,7 @@ func ListStarredRepos(token string) ([]*github.StarredRepository, error) {
 	return starredRepos, nil
 }
 
-func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber, reposPerPage int, reposByPage chan<- []*github.StarredRepository) {
+func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber, reposPerPage int, reposByPage chan<- []*github.StarredRepository, errs chan<- error) {
 	defer wg.Done()
 
 	starredReposCurrentPage := []*github.StarredRepository{}
@@ -104,7 +106,8 @@ func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber
 		},
 	)
 	if err != nil {
-		fmt.Printf("[page %d] err is not nil\n", pageNumber)
+		errs <- err
+		return
 	}
 
 	for _, repo := range repos {
@@ -114,26 +117,93 @@ func getStarredReposByPage(wg *sync.WaitGroup, client *github.Client, pageNumber
 	reposByPage <- starredReposCurrentPage
 }
 
-/*
-func ListReposLatestReleases(token string) ([]string, error) {
-}
-*/
-
-func getLatestReleaseForRepo(client *github.Client, repo *github.Repository) (*github.RepositoryRelease, error) {
-	releases, _, err := client.Repositories.ListReleases(
-		context.Background(),
-		repo.GetOwner().GetLogin(),
-		repo.GetName(),
-		&github.ListOptions{},
+// ListStarredReposLatestReleases fetches all latest releases for starred repos by a user
+func ListStarredReposLatestReleases(token string) (map[*github.Repository]*github.RepositoryRelease, error) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
 	)
+	oauthClient := oauth2.NewClient(ctx, ts)
+	ghClient := github.NewClient(oauthClient)
+
+	starredRepos, err := ListStarredRepos(token)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(releases) == 0 {
-		return nil, nil
+	wg := sync.WaitGroup{}
+	latestReleases := make(chan map[*github.Repository]*github.RepositoryRelease)
+	errs := make(chan error)
+	for _, starredRepo := range starredRepos {
+		wg.Add(1)
+		go getLatestReleaseForRepo(
+			&wg,
+			ghClient,
+			starredRepo.GetRepository(),
+			latestReleases,
+			errs,
+		)
 	}
 
-	// the releases is ordered, so the first is going to be the latest
-	return releases[0], nil
+	allLatestReleases := map[*github.Repository]*github.RepositoryRelease{}
+	go func() {
+		for latestRelease := range latestReleases {
+			for repo, release := range latestRelease {
+				allLatestReleases[repo] = release
+			}
+		}
+	}()
+
+	allErrs := []error{}
+	go func() {
+		for err := range errs {
+			allErrs = append(allErrs, err)
+		}
+	}()
+
+	wg.Wait()
+	close(latestReleases)
+	close(errs)
+
+	if len(allErrs) > 0 {
+		return nil, allErrs[0]
+	}
+
+	return allLatestReleases, nil
+}
+
+func getLatestReleaseForRepo(wg *sync.WaitGroup, client *github.Client, repo *github.Repository, latestRelease chan<- map[*github.Repository]*github.RepositoryRelease, errs chan<- error) {
+	defer wg.Done()
+
+	releasesChan := make(chan []*github.RepositoryRelease)
+	errsChan := make(chan error)
+	for i := 0; i < 5; i++ {
+		go func() {
+			releases, _, err := client.Repositories.ListReleases(
+				context.Background(),
+				repo.GetOwner().GetLogin(),
+				repo.GetName(),
+				&github.ListOptions{},
+			)
+			if err != nil {
+				errsChan <- err
+				return
+			}
+			releasesChan <- releases
+		}()
+
+		select {
+		case releases := <-releasesChan:
+			if len(releases) > 0 {
+				latestRelease <- map[*github.Repository]*github.RepositoryRelease{repo: releases[0]}
+			}
+			return
+		case err := <-errsChan:
+			errs <- err
+			return
+		case <-time.After(5 * time.Second):
+		}
+	}
+
+	errs <- fmt.Errorf("Too many failed attempts for %s\n", repo.GetFullName())
 }
