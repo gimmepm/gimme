@@ -37,6 +37,5 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(getCmd)
-
 	getCmd.PersistentFlags().String("token", "", "GitHub auth token")
 }
