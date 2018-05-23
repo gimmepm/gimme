@@ -1,6 +1,9 @@
 #!/bin/bash
 
 SCRIPT_PATH=$(dirname "$(realpath "$0")")
+SCRIPT_NAME=$(basename "$0")
+
+echo "$(date) - Starting integration test $SCRIPT_NAME"
 
 GIMME_BIN="$SCRIPT_PATH/../bin/gimme"
 COMMAND="get repos"
@@ -21,5 +24,5 @@ if [[ $REPO_COUNT -lt $EXPECTED_REPO_COUNT ]]; then
     exit 1
 fi
 
-echo "$(date) - All tests passed"
+echo "$(date) - All tests passed in $SCRIPT_NAME"
 exit 0
