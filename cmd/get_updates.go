@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/gimmepm/gimme/pkg/gh"
+	"github.com/google/go-github/github"
 	"github.com/spf13/cobra"
 )
 
@@ -39,11 +40,23 @@ to quickly create a Cobra application.`,
 			os.Exit(1)
 		}
 
-		latestReleasesByRepo, err := gh.ListStarredReposLatestReleases(token)
+		since, err := cmd.Flags().GetString("since")
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(1)
 		}
+
+		latestReleasesByRepo := map[*github.Repository]*github.RepositoryRelease{}
+		if since != "" {
+			latestReleasesByRepo, err = gh.ListStarredReposLatestReleasesSince(token, since)
+		} else {
+			latestReleasesByRepo, err = gh.ListStarredReposLatestReleases(token)
+		}
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(1)
+		}
+
 		for repo, release := range latestReleasesByRepo {
 			if release != nil {
 				fmt.Printf("(%s) %s -- (%s) %s\n", release.GetPublishedAt().String(), repo.GetFullName(), release.GetTagName(), release.GetName())
@@ -54,4 +67,5 @@ to quickly create a Cobra application.`,
 
 func init() {
 	getCmd.AddCommand(getUpdatesCmd)
+	getUpdatesCmd.PersistentFlags().String("since", "", "Show updates since a particular date/time (uses systemd.time format)")
 }

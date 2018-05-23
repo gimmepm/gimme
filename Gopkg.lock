@@ -113,6 +113,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/trstringer/go-systemd-time"
+  packages = ["systemdtime"]
+  revision = "4ae8d74b8ab21398f6a8c281d857f1b027926dc6"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -171,6 +177,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dd6cd4c07b1db37cc51c1537bcaa0ca84bed3c4b2777ab6a7f67019520e8f201"
+  inputs-digest = "31599bf94b8ce96d82322033b5c058d61880f7e810c5443177229b15329c21e9"
   solver-name = "gps-cdcl"
   solver-version = 1
