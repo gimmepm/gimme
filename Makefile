@@ -9,5 +9,8 @@ test: default
 
 clean:
 	@rm -rf bin
+
+install:
+	@go install github.com/gimmepm/gimme
 	
-.PHONY: default test clean
+.PHONY: default test clean install
