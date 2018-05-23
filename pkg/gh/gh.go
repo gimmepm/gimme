@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
+	"github.com/trstringer/go-systemd-time/systemdtime"
 	"golang.org/x/oauth2"
 )
 
@@ -137,7 +138,6 @@ func ListStarredReposLatestReleases(token string) (map[*github.Repository]*githu
 	for _, starredRepo := range starredRepos {
 		wg.Add(1)
 		go getLatestReleaseForRepo(
-			&wg,
 			ghClient,
 			starredRepo.GetRepository(),
 			latestReleases,
@@ -145,14 +145,13 @@ func ListStarredReposLatestReleases(token string) (map[*github.Repository]*githu
 		)
 	}
 
-	totalProcessed := 0
 	allLatestReleases := map[*github.Repository]*github.RepositoryRelease{}
 	go func() {
 		for latestRelease := range latestReleases {
 			for repo, release := range latestRelease {
 				allLatestReleases[repo] = release
 			}
-			totalProcessed++
+			wg.Done()
 		}
 	}()
 
@@ -160,29 +159,11 @@ func ListStarredReposLatestReleases(token string) (map[*github.Repository]*githu
 	go func() {
 		for err := range errs {
 			allErrs = append(allErrs, err)
-			totalProcessed++
+			wg.Done()
 		}
 	}()
 
 	wg.Wait()
-	for totalProcessed < len(starredRepos) {
-		// We have to block until all repos are completely processed. It is not enough
-		// to wait until all syncs are done, as there can be a race condition where all
-		// operations in the wait group have been Done() but the consuming goroutine to
-		// process hasn't looped through the item. This means that the channel can be at
-		// zero (and therefore gets closed prematurely) under certain conditions.
-		//
-		// Scenario:
-		//	The last item to process gets pushed into the channel, so WaitGroup.Wait() no
-		//	longer blocks. And then the channel close() succeeds because we have looped
-		//	through the last element, making len(releasesChannel) to zero and closing it
-		//	resulting in a return of this current function without adding the last item
-		//	to the map.
-		//
-		//	With having this additional check to see if we've processed all items (instead
-		//	of just having zero items left in the channel) we can block on the right metric
-		//	and workaround the race condition.
-	}
 	close(latestReleases)
 	close(errs)
 
@@ -193,9 +174,30 @@ func ListStarredReposLatestReleases(token string) (map[*github.Repository]*githu
 	return allLatestReleases, nil
 }
 
-func getLatestReleaseForRepo(wg *sync.WaitGroup, client *github.Client, repo *github.Repository, latestRelease chan<- map[*github.Repository]*github.RepositoryRelease, errs chan<- error) {
-	defer wg.Done()
+// ListStarredReposLatestReleasesSince fetches all latest releases since a particular time
+func ListStarredReposLatestReleasesSince(token, since string) (map[*github.Repository]*github.RepositoryRelease, error) {
+	reposAndReleases, err := ListStarredReposLatestReleases(token)
+	if err != nil {
+		return nil, err
+	}
 
+	now := time.Now()
+	adjustedTime, err := systemdtime.AdjustTime(&now, since)
+	if err != nil {
+		return nil, err
+	}
+
+	reposAndReleasesSince := map[*github.Repository]*github.RepositoryRelease{}
+	for repo, release := range reposAndReleases {
+		if release.GetPublishedAt().After(adjustedTime) {
+			reposAndReleasesSince[repo] = release
+		}
+	}
+
+	return reposAndReleasesSince, nil
+}
+
+func getLatestReleaseForRepo(client *github.Client, repo *github.Repository, latestRelease chan<- map[*github.Repository]*github.RepositoryRelease, errs chan<- error) {
 	releasesChan := make(chan []*github.RepositoryRelease)
 	errsChan := make(chan error)
 	for i := 0; i < 5; i++ {
