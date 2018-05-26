@@ -17,6 +17,7 @@ jobs:
     working_directory: /go/src/github.com/gimmepm/gimme
     steps:
       - checkout
+      - run: go get -v -t -d ./...
       - setup_remote_docker:
           docker_layer_caching: true
       - run: make docker
