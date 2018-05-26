@@ -27,6 +27,10 @@ jobs:
           docker_layer_caching: true
       - run: make docker
 
+        # Login to docker hub and push the image
+      - run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - run: docker push gimmepm/gimme
+
 workflows:
   version: 2
   build_and_deploy:
