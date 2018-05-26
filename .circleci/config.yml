@@ -18,6 +18,11 @@ jobs:
     steps:
       - checkout
       - run: go get -v -t -d ./...
+
+        # Install and run dep
+      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: dep ensure
+
       - setup_remote_docker:
           docker_layer_caching: true
       - run: make docker
