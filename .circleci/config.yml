@@ -11,8 +11,6 @@ jobs:
       - run: golint -set_exit_status ./...
       - run: go test -v ./...
       - run: make test
-      - run: make docker
-      # - run: docker push gimmepm/gimme
   deploy:
     docker:
       - image: circleci/golang:1.9
