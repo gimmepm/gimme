@@ -16,6 +16,6 @@ install:
 	@go install github.com/gimmepm/gimme
 
 docker:
-	@docker build -t gimmepm/gimme:$(CURRENT_VERSION) .
+	@docker build -t gimmepm/gimme:$(CURRENT_VERSION) -t gimmepm/gimme:latest .
 	
 .PHONY: default test clean install docker
